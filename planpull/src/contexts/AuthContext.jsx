@@ -7,7 +7,8 @@ import {
     signOut,
     onAuthStateChanged
 } from 'firebase/auth';
-import { auth } from '../services/firebase';
+import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { auth, db } from '../services/firebase';
 
 const AuthContext = createContext();
 
@@ -19,17 +20,49 @@ export function AuthProvider({ children }) {
     const [currentUser, setCurrentUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    function signup(email, password) {
-        return createUserWithEmailAndPassword(auth, email, password);
+    async function createUserDocument(user) {
+        if (!user) return;
+
+        try {
+            const userRef = doc(db, 'users', user.uid);
+            const userSnap = await getDoc(userRef);
+
+            if (!userSnap.exists()) {
+                const { email, displayName } = user;
+                const name = displayName || email.split('@')[0];
+
+                try {
+                    await setDoc(userRef, {
+                        email,
+                        displayName: name,
+                        createdAt: serverTimestamp(),
+                        subscriptionStatus: 'none',
+                        pagesUsedThisPeriod: 0
+                    });
+                } catch (error) {
+                    console.error("Error creating user document", error);
+                }
+            }
+        } catch (error) {
+            console.error("Error checking user document", error);
+        }
+    }
+
+    async function signup(email, password) {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await createUserDocument(userCredential.user);
+        return userCredential;
     }
 
     function login(email, password) {
         return signInWithEmailAndPassword(auth, email, password);
     }
 
-    function loginWithGoogle() {
+    async function loginWithGoogle() {
         const provider = new GoogleAuthProvider();
-        return signInWithPopup(auth, provider);
+        const userCredential = await signInWithPopup(auth, provider);
+        await createUserDocument(userCredential.user);
+        return userCredential;
     }
 
     function logout() {
