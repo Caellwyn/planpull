@@ -6,6 +6,9 @@ import fitz  # PyMuPDF
 from gemini_client import extract_data
 from consolidation import flatten_items
 
+# Import billing functions to expose them
+from billing import create_checkout_session, create_portal_session, stripe_webhook
+
 initialize_app()
 # Lazy initialization of Firestore to avoid deployment errors
 db = None

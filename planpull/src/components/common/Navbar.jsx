@@ -42,7 +42,7 @@ const Navbar = () => {
                 {currentUser ? (
                     <>
                         <Link to="/app" className="nav-link">Dashboard</Link>
-                        <span style={{ fontSize: '0.9rem', opacity: 0.8 }}>{currentUser.email}</span>
+                        <Link to="/app/account" className="nav-link">Account</Link>
                         <button onClick={handleLogout} style={{
                             background: 'transparent',
                             border: '1px solid rgba(255,255,255,0.5)',
@@ -55,16 +55,19 @@ const Navbar = () => {
                         </button>
                     </>
                 ) : (
-                    <Link to="/login" style={{
-                        padding: '8px 16px',
-                        backgroundColor: 'white',
-                        color: 'var(--primary-color)',
-                        textDecoration: 'none',
-                        borderRadius: '4px',
-                        fontWeight: '600'
-                    }}>
-                        Login
-                    </Link>
+                    <>
+                        <Link to="/pricing" className="nav-link">Pricing</Link>
+                        <Link to="/login" style={{
+                            padding: '8px 16px',
+                            backgroundColor: 'white',
+                            color: 'var(--primary-color)',
+                            textDecoration: 'none',
+                            borderRadius: '4px',
+                            fontWeight: '600'
+                        }}>
+                            Login
+                        </Link>
+                    </>
                 )}
             </div>
         </nav>
