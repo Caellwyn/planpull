@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import FileDropzone from '../components/dashboard/FileDropzone';
 import ResultsGrid from '../components/grid/ResultsGrid';
 import ConsolidatedView from '../components/grid/ConsolidatedView';
@@ -10,6 +10,9 @@ const Dashboard = () => {
     const [error, setError] = useState(null);
     const [hasResults, setHasResults] = useState(false);
     const [viewMode, setViewMode] = useState('detail'); // 'detail' | 'consolidated'
+    const [showDropzone, setShowDropzone] = useState(true);
+    const [extractionMode, setExtractionMode] = useState('new'); // 'new' | 'add'
+    const [totalPages, setTotalPages] = useState(0);
     const gridRef = useRef(null);
 
     const {
@@ -21,26 +24,50 @@ const Dashboard = () => {
         updateCell,
         deleteRows,
         verifyRows,
-        setData
+        setData,
+        appendData
     } = useGridData([]);
 
     const handleFileSelect = async (file) => {
         setUploading(true);
         setError(null);
-        setHasResults(false);
 
         try {
             const response = await extractPdf(file);
-            // Backend now returns { success, items, pageCount } or { success, data: { items, pageCount } }
             const items = response.items || response.data?.items || [];
-            setData(items);
+            const pageCount = response.pageCount || response.data?.pageCount || 0;
+
+            if (extractionMode === 'new') {
+                setData(items);
+                setTotalPages(pageCount);
+            } else {
+                // Add to existing extraction - renumber rows
+                appendData(items);
+                setTotalPages(prev => prev + pageCount);
+            }
+
             setHasResults(true);
+            setShowDropzone(false); // Collapse dropzone after extraction
         } catch (err) {
             console.error(err);
             setError("Failed to extract PDF. Please try again.");
         } finally {
             setUploading(false);
         }
+    };
+
+    const handleStartNew = () => {
+        setExtractionMode('new');
+        setShowDropzone(true);
+    };
+
+    const handleAddToExtraction = () => {
+        setExtractionMode('add');
+        setShowDropzone(true);
+    };
+
+    const handleCancelDropzone = () => {
+        setShowDropzone(false);
     };
 
     const handleCellValueChanged = (event) => {
@@ -114,24 +141,61 @@ const Dashboard = () => {
 
     return (
         <div className="container" style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto' }}>
-            <h1 style={{ marginBottom: '1.5rem', color: '#333' }}>Dashboard</h1>
-
-            <div className="card" style={{ marginBottom: '2rem' }}>
-                <h3 style={{ marginBottom: '1rem', color: '#2E5C43' }}>New Extraction</h3>
-                <FileDropzone onFileSelect={handleFileSelect} disabled={uploading} />
-
-                {error && (
-                    <div style={{ marginTop: '20px', padding: '10px', backgroundColor: '#ffebee', color: '#c62828', borderRadius: '4px' }}>
-                        {error}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <h1 style={{ margin: 0, color: '#333' }}>Dashboard</h1>
+                {hasResults && !showDropzone && (
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                        <button onClick={handleAddToExtraction} className="btn-secondary">
+                            + Add Pages
+                        </button>
+                        <button onClick={handleStartNew} className="btn-primary">
+                            Start New Extraction
+                        </button>
                     </div>
                 )}
             </div>
+
+            {/* Dropzone - shown initially or when adding/starting new */}
+            {showDropzone && (
+                <div className="card" style={{ marginBottom: '2rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                        <h3 style={{ margin: 0, color: '#2E5C43' }}>
+                            {extractionMode === 'new' ? 'New Extraction' : 'Add Pages to Extraction'}
+                        </h3>
+                        {hasResults && (
+                            <button
+                                onClick={handleCancelDropzone}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    fontSize: '1.5rem',
+                                    cursor: 'pointer',
+                                    color: '#666'
+                                }}
+                            >
+                                &times;
+                            </button>
+                        )}
+                    </div>
+                    <FileDropzone onFileSelect={handleFileSelect} disabled={uploading} />
+                    {uploading && (
+                        <div style={{ marginTop: '15px', textAlign: 'center', color: '#666' }}>
+                            Extracting... This may take a moment for multi-page PDFs.
+                        </div>
+                    )}
+                    {error && (
+                        <div style={{ marginTop: '20px', padding: '10px', backgroundColor: '#ffebee', color: '#c62828', borderRadius: '4px' }}>
+                            {error}
+                        </div>
+                    )}
+                </div>
+            )}
 
             {hasResults && (
                 <div className="card">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '10px' }}>
                         <h3 style={{ margin: 0, color: '#2E5C43' }}>
-                            Extraction Results ({detailRows.length} items)
+                            Extraction Results ({detailRows.length} items from {totalPages} page{totalPages !== 1 ? 's' : ''})
                         </h3>
 
                         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>

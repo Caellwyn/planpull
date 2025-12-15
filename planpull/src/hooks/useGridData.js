@@ -54,6 +54,26 @@ export function useGridData(initialData = []) {
     setDetailRows(newData || []);
   }, []);
 
+  // Append new data (for "Add to extraction" feature)
+  const appendData = useCallback((newItems) => {
+    if (!newItems || newItems.length === 0) return;
+
+    setDetailRows(prev => {
+      // Find the highest current row number
+      const maxRowNumber = prev.length > 0
+        ? Math.max(...prev.map(r => r.rowNumber))
+        : 0;
+
+      // Renumber new items starting after the current max
+      const renumberedItems = newItems.map((item, index) => ({
+        ...item,
+        rowNumber: maxRowNumber + index + 1
+      }));
+
+      return [...prev, ...renumberedItems];
+    });
+  }, []);
+
   return {
     detailRows,           // Source of truth - render in Detail view
     consolidatedRows,     // Computed - render in Consolidated view
@@ -64,6 +84,7 @@ export function useGridData(initialData = []) {
     deleteRows,
     verifyRows,
     unverifyRows,
-    setData
+    setData,
+    appendData            // For adding pages to existing extraction
   };
 }

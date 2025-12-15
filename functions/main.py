@@ -2,6 +2,7 @@ from firebase_functions import https_fn, options
 from firebase_admin import initialize_app, firestore
 import base64
 import time
+import fitz  # PyMuPDF
 from gemini_client import extract_data
 from consolidation import flatten_items
 
@@ -48,15 +49,31 @@ def extract_pdf(req: https_fn.CallableRequest) -> any:
         file_bytes = base64.b64decode(file_data_b64)
         mime_type = req.data.get('mimeType', 'application/pdf')
 
-        # 2. Call Gemini Extraction
+        # 2. Count actual PDF pages using PyMuPDF (for accurate billing)
+        page_count = 0
+        if mime_type == 'application/pdf':
+            try:
+                pdf_doc = fitz.open(stream=file_bytes, filetype="pdf")
+                page_count = pdf_doc.page_count
+                pdf_doc.close()
+            except Exception as pdf_error:
+                print(f"Warning: Could not count PDF pages: {pdf_error}")
+                # Fall back to counting from extracted items
+
+        # 3. Call Gemini Extraction
         raw_result = extract_data(file_bytes, mime_type)
 
-        # 3. Flatten Items (consolidation happens on frontend)
+        # 4. Flatten Items (consolidation happens on frontend)
         final_result = flatten_items(raw_result)
 
         # Calculate metrics
         item_count = len(final_result.get('items', []))
-        page_count = final_result.get('pageCount', 0)
+        # Use actual page count from PyMuPDF, fall back to extracted pages if not available
+        if page_count == 0:
+            page_count = final_result.get('pageCount', 0)
+
+        # Add page count to response for frontend display
+        final_result['pageCount'] = page_count
 
         # 4. Atomic Write: Log Success + Increment Usage
         processing_time_ms = int((time.time() - start_time) * 1000)

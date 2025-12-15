@@ -2,3 +2,4 @@ firebase-functions
 firebase-admin
 google-genai
 pydantic
+pymupdf
