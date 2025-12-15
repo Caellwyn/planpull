@@ -43,8 +43,12 @@ const ProtectedRoute = ({ children, requireSubscription = true }) => {
         return <Navigate to="/login" />;
     }
 
-    // Check subscription if required
-    if (requireSubscription && subscriptionStatus !== 'active') {
+    // Admin emails always have access
+    const ADMIN_EMAILS = ['josh@caellwynai.com'];
+    const isAdmin = ADMIN_EMAILS.includes(currentUser.email);
+
+    // Check subscription if required (admins bypass)
+    if (requireSubscription && !isAdmin && subscriptionStatus !== 'active') {
         return <Navigate to="/pricing" />;
     }
 

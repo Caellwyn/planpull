@@ -9,6 +9,9 @@ from consolidation import flatten_items
 # Import billing functions to expose them
 from billing import create_checkout_session, create_portal_session, stripe_webhook
 
+# Admin emails bypass subscription checks
+ADMIN_EMAILS = ['josh@caellwynai.com']
+
 initialize_app()
 # Lazy initialization of Firestore to avoid deployment errors
 db = None
