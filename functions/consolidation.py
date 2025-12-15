@@ -1,15 +1,15 @@
-import pandas as pd
 from typing import Dict, Any, List
 
-def consolidate_items(raw_data: Dict[str, Any]) -> Dict[str, Any]:
+def flatten_items(raw_data: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Consolidates raw extraction results by grouping items with the same name and unit.
-    
+    Flattens raw extraction results into a single list of items with row numbers.
+    Consolidation is handled on the frontend for immediate edit feedback.
+
     Args:
         raw_data: The raw JSON response from Gemini, containing 'tables' and 'diagrams'.
-        
+
     Returns:
-        A dictionary containing the original raw_data plus a 'consolidated_items' list.
+        A dictionary containing 'items' (flat list) and 'pageCount'.
     """
     all_items = []
 
@@ -18,9 +18,15 @@ def consolidate_items(raw_data: Dict[str, Any]) -> Dict[str, Any]:
         for table in raw_data['tables']:
             if 'items' in table:
                 for item in table['items']:
-                    item_data = item.copy()
-                    item_data['page'] = table.get('page')
-                    item_data['source'] = 'table'
+                    item_data = {
+                        'item': item.get('item', ''),
+                        'quantity': item.get('quantity', 0),
+                        'unit': item.get('unit', ''),
+                        'area': item.get('area', ''),
+                        'page': table.get('page'),
+                        'source': 'table',
+                        'verified': False
+                    }
                     all_items.append(item_data)
 
     # Flatten diagrams
@@ -28,56 +34,34 @@ def consolidate_items(raw_data: Dict[str, Any]) -> Dict[str, Any]:
         for diagram in raw_data['diagrams']:
             if 'items' in diagram:
                 for item in diagram['items']:
-                    item_data = item.copy()
-                    item_data['page'] = diagram.get('page')
-                    item_data['source'] = 'diagram'
-                    item_data['area'] = diagram.get('area')
+                    item_data = {
+                        'item': item.get('item', ''),
+                        'quantity': item.get('quantity', 0),
+                        'unit': item.get('unit', ''),
+                        'area': diagram.get('area', ''),
+                        'page': diagram.get('page'),
+                        'source': 'diagram',
+                        'verified': False
+                    }
                     all_items.append(item_data)
 
-    if not all_items:
-        return {
-            **raw_data,
-            "consolidated_items": []
-        }
+    # Assign row numbers
+    for idx, item in enumerate(all_items, start=1):
+        item['rowNumber'] = idx
 
-    # Create DataFrame
-    df = pd.DataFrame(all_items)
+    # Calculate page count from unique pages
+    all_pages = set()
+    for item in all_items:
+        if item.get('page') is not None:
+            all_pages.add(item['page'])
 
-    # Normalize item names (lowercase, strip whitespace)
-    df['normalized_item'] = df['item'].astype(str).str.lower().str.strip()
-    
-    # Fill NaN units with empty string for grouping
-    df['unit'] = df['unit'].fillna('')
+    return {
+        'items': all_items,
+        'pageCount': len(all_pages)
+    }
 
-    # Group by normalized item and unit
-    # Aggregations:
-    # - quantity: sum
-    # - item: first (to keep the original casing of the first occurrence)
-    # - page: unique list
-    grouped = df.groupby(['normalized_item', 'unit']).agg({
-        'quantity': 'sum',
-        'item': 'first',
-        'page': lambda x: sorted(list(set(x)))
-    }).reset_index()
 
-    # Convert back to list of dicts
-    consolidated_list = []
-    for _, row in grouped.iterrows():
-        consolidated_list.append({
-            "item": row['item'],
-            "quantity": float(row['quantity']),
-            "unit": row['unit'] if row['unit'] else None,
-            "pages": row['page']
-        })
-
-    # Sort primarily by item name
-    consolidated_list.sort(key=lambda x: x['item'].lower())
-
-    # Add row numbers
-    for idx, item in enumerate(consolidated_list):
-        item['rowNumber'] = idx + 1
-
-    result = raw_data.copy()
-    result['consolidated_items'] = consolidated_list
-    
-    return result
+# Keep old name as alias for backward compatibility during transition
+def consolidate_items(raw_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Alias for flatten_items - consolidation now happens on frontend."""
+    return flatten_items(raw_data)

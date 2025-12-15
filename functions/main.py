@@ -3,7 +3,7 @@ from firebase_admin import initialize_app, firestore
 import base64
 import time
 from gemini_client import extract_data
-from consolidation import consolidate_items
+from consolidation import flatten_items
 
 initialize_app()
 # Lazy initialization of Firestore to avoid deployment errors
@@ -12,12 +12,13 @@ db = None
 @https_fn.on_call(
     cors=options.CorsOptions(cors_origins="*", cors_methods=["get", "post"]),
     timeout_sec=300, # Increase timeout to 5 minutes for large PDFs
-    memory=options.MemoryOption.GB_2 # Increase memory for Pandas processing
+    memory=options.MemoryOption.MB_512 # Reduced memory - no longer using Pandas
 )
 def extract_pdf(req: https_fn.CallableRequest) -> any:
     """
-    Accepts a base64 PDF, sends it to Gemini, consolidates results, 
+    Accepts a base64 PDF, sends it to Gemini, flattens results,
     and tracks usage/logs in Firestore.
+    Consolidation is handled on the frontend for immediate edit feedback.
     """
     global db
     if db is None:
@@ -50,22 +51,12 @@ def extract_pdf(req: https_fn.CallableRequest) -> any:
         # 2. Call Gemini Extraction
         raw_result = extract_data(file_bytes, mime_type)
 
-        # 3. Consolidate Items
-        final_result = consolidate_items(raw_result)
-        
+        # 3. Flatten Items (consolidation happens on frontend)
+        final_result = flatten_items(raw_result)
+
         # Calculate metrics
-        item_count = len(final_result.get('consolidated_items', []))
-        
-        # Get page count (from unique pages in extracted items, or default to 0 if none)
-        # Note: Gemini doesn't always return total page count, so we infer from extracted items
-        # If no items, this might be 0. Ideally we'd measure PDF pages beforehand, 
-        # but for now we track 'pages with extracted items'.
-        all_pages = set()
-        if 'consolidated_items' in final_result:
-            for item in final_result['consolidated_items']:
-                if 'pages' in item:
-                    all_pages.update(item['pages'])
-        page_count = len(all_pages)
+        item_count = len(final_result.get('items', []))
+        page_count = final_result.get('pageCount', 0)
 
         # 4. Atomic Write: Log Success + Increment Usage
         processing_time_ms = int((time.time() - start_time) * 1000)
