@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
-import AppShell from './pages/AppShell';
+import Dashboard from './pages/Dashboard';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import Navbar from './components/common/Navbar';
 import './App.css';
@@ -15,7 +15,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/app" element={
           <ProtectedRoute>
-            <AppShell />
+            <Dashboard />
           </ProtectedRoute>
         } />
       </Routes>

@@ -21,26 +21,49 @@ const Navbar = () => {
             justifyContent: 'space-between',
             alignItems: 'center',
             padding: '1rem 2rem',
-            backgroundColor: '#f8f9fa',
-            borderBottom: '1px solid #dee2e6',
-            marginBottom: '20px'
+            backgroundColor: 'var(--primary-color)',
+            color: 'white',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
         }}>
-            <div className="brand">
-                <Link to="/" style={{ textDecoration: 'none', fontSize: '1.25rem', fontWeight: 'bold', color: '#333' }}>
+            <div className="brand" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {/* Placeholder leaf icon */}
+                <span style={{ fontSize: '1.5rem' }}>🍃</span>
+                <Link to="/" style={{
+                    fontSize: '1.5rem',
+                    fontWeight: 'bold',
+                    color: 'white',
+                    textDecoration: 'none'
+                }}>
                     PlanPull
                 </Link>
             </div>
-            <div className="menu">
+
+            <div className="menu" style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
                 {currentUser ? (
-                    <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-                        <span style={{ fontSize: '0.9rem', color: '#666' }}>{currentUser.email}</span>
-                        <Link to="/app">Dashboard</Link>
-                        <button onClick={handleLogout} style={{ padding: '5px 10px', cursor: 'pointer' }}>
+                    <>
+                        <Link to="/app" className="nav-link">Dashboard</Link>
+                        <Link to="/app/extract" className="nav-link" style={{ borderBottom: '2px solid white' }}>Extract</Link>
+                        <span style={{ fontSize: '0.9rem', opacity: 0.8 }}>{currentUser.email}</span>
+                        <button onClick={handleLogout} style={{
+                            background: 'transparent',
+                            border: '1px solid rgba(255,255,255,0.5)',
+                            color: 'white',
+                            padding: '6px 12px',
+                            borderRadius: '4px',
+                            cursor: 'pointer'
+                        }}>
                             Logout
                         </button>
-                    </div>
+                    </>
                 ) : (
-                    <Link to="/login" style={{ padding: '8px 16px', backgroundColor: '#007bff', color: 'white', textDecoration: 'none', borderRadius: '4px' }}>
+                    <Link to="/login" style={{
+                        padding: '8px 16px',
+                        backgroundColor: 'white',
+                        color: 'var(--primary-color)',
+                        textDecoration: 'none',
+                        borderRadius: '4px',
+                        fontWeight: '600'
+                    }}>
                         Login
                     </Link>
                 )}
