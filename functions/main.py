@@ -1,5 +1,7 @@
 from firebase_functions import https_fn, options
 from firebase_admin import initialize_app
+import base64
+from gemini_client import extract_data
 
 initialize_app()
 
@@ -8,9 +10,7 @@ initialize_app()
 )
 def extract_pdf(req: https_fn.CallableRequest) -> any:
     """
-    Stub function for PDF extraction.
-    In the future, this will accept a PDF file/URL, process it with Gemini,
-    and return the extracted tabular data.
+    Accepts a base64 PDF, sends it to Gemini, and returns extracted data.
     """
     # Enforce Authentication
     if not req.auth:
@@ -19,16 +19,33 @@ def extract_pdf(req: https_fn.CallableRequest) -> any:
             message="The function must be called while authenticated."
         )
 
-    # TODO: Implement PDF processing logic
-    
-    return {
-        "status": "success",
-        "message": "PDF extraction stub called successfully",
-        "data": {
-            "items": [
-                {"item": "Sample Item 1", "qty": 10, "unit": "ea"},
-                {"item": "Sample Item 2", "qty": 5, "unit": "m2"}
-            ],
-            "pageCount": 1
+    try:
+        # 1. Decode base64 file data
+        file_data_b64 = req.data.get('fileData')
+        if not file_data_b64:
+            raise https_fn.HttpsError(
+                code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
+                message="Missing 'fileData' in request."
+            )
+        
+        file_bytes = base64.b64decode(file_data_b64)
+        mime_type = req.data.get('mimeType', 'application/pdf')
+
+        # 2. Call Gemini Extraction
+        result = extract_data(file_bytes, mime_type)
+
+        return {
+            "success": True,
+            "data": result
         }
-    }
+
+    except Exception as e:
+        print(f"Error in extract_pdf: {e}")
+        # Re-raise https errors as is
+        if isinstance(e, https_fn.HttpsError):
+            raise e
+        # Wrap unknown errors
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INTERNAL,
+            message=str(e)
+        )
