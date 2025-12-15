@@ -1,0 +1,33 @@
+{
+    "indexes": [
+        {
+            "collectionGroup": "extractions",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "userId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "extractedAt",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "extractions",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "success",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "extractedAt",
+                    "order": "DESCENDING"
+                }
+            ]
+        }
+    ],
+    "fieldOverrides": []
+}
