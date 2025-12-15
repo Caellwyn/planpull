@@ -1,7 +1,9 @@
 import React, { useState, useRef } from 'react';
 import FileDropzone from '../components/dashboard/FileDropzone';
-import ResultsGrid from '../components/grid/ResultsGrid';
+import ResultsGrid, { COLUMN_DEFS } from '../components/grid/ResultsGrid';
 import ConsolidatedView from '../components/grid/ConsolidatedView';
+import RowNumberFilter from '../components/grid/RowNumberFilter';
+import ColumnPicker from '../components/grid/ColumnPicker';
 import { useGridData } from '../hooks/useGridData';
 import { extractPdf } from '../services/api';
 
@@ -13,6 +15,8 @@ const Dashboard = () => {
     const [showDropzone, setShowDropzone] = useState(true);
     const [extractionMode, setExtractionMode] = useState('new'); // 'new' | 'add'
     const [totalPages, setTotalPages] = useState(0);
+    const [rowNumberFilter, setRowNumberFilter] = useState(null);
+    const [visibleColumns, setVisibleColumns] = useState(COLUMN_DEFS.map(c => c.field));
     const gridRef = useRef(null);
 
     const {
@@ -106,19 +110,41 @@ const Dashboard = () => {
     };
 
     const handleExportCSV = () => {
-        const rows = viewMode === 'detail' ? detailRows : consolidatedRows;
+        let rows;
+        if (viewMode === 'detail') {
+            // Apply row filter if active
+            rows = rowNumberFilter && rowNumberFilter.length > 0
+                ? detailRows.filter(r => rowNumberFilter.includes(r.rowNumber))
+                : detailRows;
+        } else {
+            rows = consolidatedRows;
+        }
+
         if (rows.length === 0) return;
 
         let csv;
         if (viewMode === 'detail') {
-            const headers = ['Item', 'Quantity', 'Unit', 'Area', 'Page'];
-            const csvRows = rows.map(r => [
-                `"${(r.item || '').replace(/"/g, '""')}"`,
-                r.quantity,
-                `"${(r.unit || '').replace(/"/g, '""')}"`,
-                `"${(r.area || '').replace(/"/g, '""')}"`,
-                r.page || ''
-            ].join(','));
+            // Build headers from visible columns only
+            const columnMap = {
+                rowNumber: '#',
+                item: 'Item',
+                quantity: 'Quantity',
+                unit: 'Unit',
+                area: 'Area',
+                page: 'Page',
+                verified: 'Verified'
+            };
+            const exportColumns = visibleColumns.filter(c => c !== 'verified'); // Skip verified for export
+            const headers = exportColumns.map(c => columnMap[c] || c);
+
+            const csvRows = rows.map(r => {
+                return exportColumns.map(col => {
+                    const val = r[col];
+                    if (val === null || val === undefined) return '';
+                    if (typeof val === 'string') return `"${val.replace(/"/g, '""')}"`;
+                    return val;
+                }).join(',');
+            });
             csv = [headers.join(','), ...csvRows].join('\n');
         } else {
             const headers = [groupByColumn.charAt(0).toUpperCase() + groupByColumn.slice(1), 'Total Quantity', 'Breakdown'];
@@ -245,14 +271,30 @@ const Dashboard = () => {
                         </div>
                     </div>
 
-                    {/* Grid Actions (only in detail view) */}
+                    {/* Grid Actions and Filters (only in detail view) */}
                     {viewMode === 'detail' && (
-                        <div style={{ display: 'flex', gap: '10px', marginBottom: '10px', flexWrap: 'wrap' }}>
-                            <button onClick={handleSelectAll} className="btn-secondary">Select All</button>
-                            <button onClick={handleDeselectAll} className="btn-secondary">Deselect All</button>
-                            <button onClick={handleVerifySelected} className="btn-secondary">Verify Selected</button>
-                            <button onClick={handleDeleteSelected} className="btn-secondary" style={{ color: '#c62828' }}>Delete Selected</button>
-                        </div>
+                        <>
+                            {/* Filter Row */}
+                            <div style={{ display: 'flex', gap: '15px', marginBottom: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                                <RowNumberFilter
+                                    onFilterChange={setRowNumberFilter}
+                                    disabled={uploading}
+                                />
+                                <ColumnPicker
+                                    columns={COLUMN_DEFS}
+                                    visibleColumns={visibleColumns}
+                                    onVisibilityChange={setVisibleColumns}
+                                    disabled={uploading}
+                                />
+                            </div>
+                            {/* Action Buttons Row */}
+                            <div style={{ display: 'flex', gap: '10px', marginBottom: '10px', flexWrap: 'wrap' }}>
+                                <button onClick={handleSelectAll} className="btn-secondary">Select All</button>
+                                <button onClick={handleDeselectAll} className="btn-secondary">Deselect All</button>
+                                <button onClick={handleVerifySelected} className="btn-secondary">Verify Selected</button>
+                                <button onClick={handleDeleteSelected} className="btn-secondary" style={{ color: '#c62828' }}>Delete Selected</button>
+                            </div>
+                        </>
                     )}
 
                     {/* Results View */}
@@ -261,6 +303,8 @@ const Dashboard = () => {
                             rowData={detailRows}
                             onCellValueChanged={handleCellValueChanged}
                             gridRef={gridRef}
+                            rowNumberFilter={rowNumberFilter}
+                            visibleColumns={visibleColumns}
                         />
                     ) : (
                         <ConsolidatedView
