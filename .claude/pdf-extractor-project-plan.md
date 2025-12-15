@@ -1353,7 +1353,22 @@ Deploy indexes: `firebase deploy --only firestore:indexes`
   - subscription_started
 - [ ] Or skip for MVP
 
-#### Step 10.11: Final Testing - Happy Path
+#### Step 10.11: Help Page / User Guide
+- [ ] Create `src/pages/Help.jsx`
+- [ ] Add route `/help` (accessible without login)
+- [ ] Sections to include:
+  - Getting Started: account creation, subscription
+  - Uploading PDFs: supported formats, file size limits, multi-page support
+  - Understanding Results: detail view vs consolidated view
+  - Editing Data: inline editing, row verification, deleting rows
+  - Filtering & Columns: row number filter, show/hide columns
+  - Exporting: CSV download, schema selection (if implemented)
+  - Account Management: viewing usage, managing billing
+- [ ] Add link to Help in Navbar (visible to all users)
+- [ ] Consider adding contextual help tooltips on key features
+- [ ] Optional: Add FAQ section for common questions
+
+#### Step 10.12: Final Testing - Happy Path
 - [ ] New user signup
 - [ ] Subscribe to Standard plan (test card)
 - [ ] Upload sample PDF

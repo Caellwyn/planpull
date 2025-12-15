@@ -42,6 +42,7 @@ const Navbar = () => {
                 {currentUser ? (
                     <>
                         <Link to="/app" className="nav-link">Dashboard</Link>
+                        <Link to="/app/schemas" className="nav-link">Schemas</Link>
                         <Link to="/app/account" className="nav-link">Account</Link>
                         <button onClick={handleLogout} style={{
                             background: 'transparent',

@@ -4,6 +4,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Pricing from './pages/Pricing';
 import Account from './pages/Account';
+import Schemas from './pages/Schemas';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import Navbar from './components/common/Navbar';
 import './App.css';
@@ -24,6 +25,11 @@ function App() {
         <Route path="/app/account" element={
           <ProtectedRoute requireSubscription={false}>
             <Account />
+          </ProtectedRoute>
+        } />
+        <Route path="/app/schemas" element={
+          <ProtectedRoute>
+            <Schemas />
           </ProtectedRoute>
         } />
       </Routes>

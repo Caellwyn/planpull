@@ -1,4 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db } from '../services/firebase';
+import { useAuth } from '../contexts/AuthContext';
 import FileDropzone from '../components/dashboard/FileDropzone';
 import ResultsGrid, { COLUMN_DEFS } from '../components/grid/ResultsGrid';
 import ConsolidatedView from '../components/grid/ConsolidatedView';
@@ -6,8 +9,10 @@ import RowNumberFilter from '../components/grid/RowNumberFilter';
 import ColumnPicker from '../components/grid/ColumnPicker';
 import { useGridData } from '../hooks/useGridData';
 import { extractPdf } from '../services/api';
+import { exportWithSchema } from '../utils/schemaTransform';
 
 const Dashboard = () => {
+    const { currentUser } = useAuth();
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState(null);
     const [hasResults, setHasResults] = useState(false);
@@ -17,7 +22,26 @@ const Dashboard = () => {
     const [totalPages, setTotalPages] = useState(0);
     const [rowNumberFilter, setRowNumberFilter] = useState(null);
     const [visibleColumns, setVisibleColumns] = useState(COLUMN_DEFS.map(c => c.field));
+    const [schemas, setSchemas] = useState([]);
+    const [selectedSchemaId, setSelectedSchemaId] = useState('');
     const gridRef = useRef(null);
+
+    // Load available schemas
+    useEffect(() => {
+        const schemasRef = collection(db, 'schemas');
+        const unsubscribe = onSnapshot(schemasRef, (snapshot) => {
+            const allSchemas = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+            // Filter to system schemas + user's schemas
+            const filtered = allSchemas.filter(s =>
+                s.scope === 'system' || s.ownerId === currentUser?.uid
+            );
+            setSchemas(filtered);
+        });
+        return () => unsubscribe();
+    }, [currentUser]);
 
     const {
         detailRows,
@@ -122,45 +146,96 @@ const Dashboard = () => {
 
         if (rows.length === 0) return;
 
+        const selectedSchema = schemas.find(s => s.id === selectedSchemaId);
         let csv;
-        if (viewMode === 'detail') {
-            // Build headers from visible columns only
-            const columnMap = {
-                rowNumber: '#',
-                item: 'Item',
-                quantity: 'Quantity',
-                unit: 'Unit',
-                area: 'Area',
-                page: 'Page',
-                verified: 'Verified'
-            };
-            const exportColumns = visibleColumns.filter(c => c !== 'verified'); // Skip verified for export
-            const headers = exportColumns.map(c => columnMap[c] || c);
 
-            const csvRows = rows.map(r => {
-                return exportColumns.map(col => {
-                    const val = r[col];
-                    if (val === null || val === undefined) return '';
-                    if (typeof val === 'string') return `"${val.replace(/"/g, '""')}"`;
-                    return val;
-                }).join(',');
-            });
-            csv = [headers.join(','), ...csvRows].join('\n');
+        if (viewMode === 'detail') {
+            if (selectedSchema) {
+                // Use schema transform
+                csv = exportWithSchema(rows, selectedSchema);
+            } else {
+                // No schema - use visible columns
+                const columnMap = {
+                    rowNumber: '#',
+                    item: 'Item',
+                    quantity: 'Quantity',
+                    unit: 'Unit',
+                    area: 'Area',
+                    page: 'Page',
+                    verified: 'Verified'
+                };
+                const exportColumns = visibleColumns.filter(c => c !== 'verified');
+                const headers = exportColumns.map(c => columnMap[c] || c);
+
+                const csvRows = rows.map(r => {
+                    return exportColumns.map(col => {
+                        const val = r[col];
+                        if (val === null || val === undefined) return '';
+                        if (typeof val === 'string') return `"${val.replace(/"/g, '""')}"`;
+                        return val;
+                    }).join(',');
+                });
+                csv = [headers.join(','), ...csvRows].join('\n');
+            }
         } else {
-            const headers = [groupByColumn.charAt(0).toUpperCase() + groupByColumn.slice(1), 'Total Quantity', 'Breakdown'];
-            const csvRows = consolidatedRows.map(r => [
-                `"${(r.groupValue || '').replace(/"/g, '""')}"`,
-                r.totalQuantity,
-                `"${(r.breakdownText || '').replace(/"/g, '""')}"`
-            ].join(','));
-            csv = [headers.join(','), ...csvRows].join('\n');
+            // Consolidated view
+            if (selectedSchema) {
+                // Apply schema to consolidated - use included columns for grouping info
+                const includedColumns = selectedSchema.columns
+                    .filter(col => col.include)
+                    .sort((a, b) => a.order - b.order);
+
+                // Build headers: Group column, Total Quantity, then breakdown columns from schema
+                const groupHeader = groupByColumn.charAt(0).toUpperCase() + groupByColumn.slice(1);
+                const breakdownHeaders = includedColumns
+                    .filter(c => c.sourceField !== 'quantity') // quantity is totaled separately
+                    .map(c => c.outputName || c.sourceField);
+
+                const headers = [groupHeader, 'Total Quantity', ...breakdownHeaders.map(h => `Breakdown: ${h}`)];
+
+                const escapeCSV = (val) => {
+                    if (val === null || val === undefined) return '';
+                    const str = String(val);
+                    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                        return `"${str.replace(/"/g, '""')}"`;
+                    }
+                    return str;
+                };
+
+                const csvRows = consolidatedRows.map(r => {
+                    const rowData = [escapeCSV(r.groupValue), r.totalQuantity];
+                    // Add breakdown info for each included column
+                    includedColumns
+                        .filter(c => c.sourceField !== 'quantity')
+                        .forEach(col => {
+                            // Get unique values from breakdown for this field
+                            const values = r.breakdown
+                                .map(b => b[col.sourceField])
+                                .filter((v, i, arr) => v && arr.indexOf(v) === i)
+                                .join('; ');
+                            rowData.push(escapeCSV(values));
+                        });
+                    return rowData.join(',');
+                });
+                csv = [headers.join(','), ...csvRows].join('\n');
+            } else {
+                // Default consolidated export
+                const headers = [groupByColumn.charAt(0).toUpperCase() + groupByColumn.slice(1), 'Total Quantity', 'Breakdown'];
+                const csvRows = consolidatedRows.map(r => [
+                    `"${(r.groupValue || '').replace(/"/g, '""')}"`,
+                    r.totalQuantity,
+                    `"${(r.breakdownText || '').replace(/"/g, '""')}"`
+                ].join(','));
+                csv = [headers.join(','), ...csvRows].join('\n');
+            }
         }
 
         const blob = new Blob([csv], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `extraction-${viewMode}-${new Date().toISOString().slice(0,10)}.csv`;
+        const schemaName = selectedSchemaId ? schemas.find(s => s.id === selectedSchemaId)?.name?.replace(/\s+/g, '-') : viewMode;
+        a.download = `extraction-${schemaName}-${new Date().toISOString().slice(0,10)}.csv`;
         a.click();
         URL.revokeObjectURL(url);
     };
@@ -271,6 +346,39 @@ const Dashboard = () => {
                         </div>
                     </div>
 
+                    {/* Export Section - Moved to top for visibility */}
+                    <div style={{ marginBottom: '15px', display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', padding: '10px', backgroundColor: '#f5f5f5', borderRadius: '4px' }}>
+                        {schemas.length > 0 && (
+                            <select
+                                value={selectedSchemaId}
+                                onChange={(e) => setSelectedSchemaId(e.target.value)}
+                                style={{
+                                    padding: '8px 12px',
+                                    borderRadius: '4px',
+                                    border: '1px solid #ddd',
+                                    fontSize: '0.95rem'
+                                }}
+                            >
+                                <option value="">Export as {viewMode === 'detail' ? 'visible columns' : 'default format'}</option>
+                                <optgroup label="System Schemas">
+                                    {schemas.filter(s => s.scope === 'system').map(s => (
+                                        <option key={s.id} value={s.id}>{s.name}</option>
+                                    ))}
+                                </optgroup>
+                                {schemas.some(s => s.scope !== 'system') && (
+                                    <optgroup label="My Schemas">
+                                        {schemas.filter(s => s.scope !== 'system').map(s => (
+                                            <option key={s.id} value={s.id}>{s.name}</option>
+                                        ))}
+                                    </optgroup>
+                                )}
+                            </select>
+                        )}
+                        <button onClick={handleExportCSV} className="btn-primary">
+                            Export {viewMode === 'detail' ? 'Detail' : 'Consolidated'} CSV
+                        </button>
+                    </div>
+
                     {/* Grid Actions and Filters (only in detail view) */}
                     {viewMode === 'detail' && (
                         <>
@@ -313,12 +421,6 @@ const Dashboard = () => {
                         />
                     )}
 
-                    {/* Export Button */}
-                    <div style={{ marginTop: '15px', display: 'flex', gap: '10px' }}>
-                        <button onClick={handleExportCSV} className="btn-primary">
-                            Export {viewMode === 'detail' ? 'Detail' : 'Consolidated'} CSV
-                        </button>
-                    </div>
                 </div>
             )}
         </div>
