@@ -392,9 +392,10 @@ const FeatureCard = ({ icon, iconImage, title, description }) => (
         padding: '30px',
         backgroundColor: 'white',
         borderRadius: '8px',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.08)'
+        boxShadow: '0 2px 10px rgba(0,0,0,0.08)',
+        textAlign: 'center'
     }}>
-        <div style={{ fontSize: '2.5rem', marginBottom: '15px', height: '50px', display: 'flex', alignItems: 'center' }}>
+        <div style={{ fontSize: '2.5rem', marginBottom: '15px', height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {iconImage ? (
                 <img src={iconImage} alt="" style={{ height: '50px', width: 'auto' }} />
             ) : (
