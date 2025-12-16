@@ -44,6 +44,7 @@ const Navbar = () => {
                         <Link to="/app" className="nav-link">Dashboard</Link>
                         <Link to="/app/schemas" className="nav-link">Schemas</Link>
                         <Link to="/app/account" className="nav-link">Account</Link>
+                        <Link to="/help" className="nav-link">Help</Link>
                         <button onClick={handleLogout} style={{
                             background: 'transparent',
                             border: '1px solid rgba(255,255,255,0.5)',
@@ -58,6 +59,7 @@ const Navbar = () => {
                 ) : (
                     <>
                         <Link to="/pricing" className="nav-link">Pricing</Link>
+                        <Link to="/help" className="nav-link">Help</Link>
                         <Link to="/login" style={{
                             padding: '8px 16px',
                             backgroundColor: 'white',

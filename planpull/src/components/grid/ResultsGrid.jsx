@@ -68,7 +68,8 @@ const ResultsGrid = ({
   onSelectionChanged,
   gridRef,
   rowNumberFilter,
-  visibleColumns
+  visibleColumns,
+  selectedSchema
 }) => {
   const defaultColDef = useMemo(() => ({
     sortable: true,
@@ -77,8 +78,30 @@ const ResultsGrid = ({
     editable: true,
   }), []);
 
-  // Apply column visibility
+  // Apply column visibility based on schema or manual column picker
   const columnDefs = useMemo(() => {
+    // If a schema is selected, use its column configuration
+    if (selectedSchema && selectedSchema.columns) {
+      const includedFields = selectedSchema.columns
+        .filter(c => c.include)
+        .map(c => c.sourceField);
+
+      return COLUMN_DEFS.map(col => {
+        const isIncluded = includedFields.includes(col.field);
+        const schemaCol = selectedSchema.columns.find(c => c.sourceField === col.field);
+
+        return {
+          ...col,
+          hide: !isIncluded && col.field !== 'verified', // Always show verified checkbox
+          // Use schema's output name as header if available
+          headerName: schemaCol?.include ? (schemaCol.outputName || col.headerName) : col.headerName,
+          // Add visual indicator for schema-included columns
+          cellStyle: isIncluded ? { backgroundColor: 'rgba(46, 92, 67, 0.05)' } : undefined
+        };
+      });
+    }
+
+    // No schema - use manual column visibility
     if (!visibleColumns || visibleColumns.length === 0) {
       return COLUMN_DEFS;
     }
@@ -86,7 +109,7 @@ const ResultsGrid = ({
       ...col,
       hide: !visibleColumns.includes(col.field)
     }));
-  }, [visibleColumns]);
+  }, [visibleColumns, selectedSchema]);
 
   // New v32+ row selection config
   const rowSelection = useMemo(() => ({

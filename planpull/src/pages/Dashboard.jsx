@@ -219,13 +219,37 @@ const Dashboard = () => {
                 });
                 csv = [headers.join(','), ...csvRows].join('\n');
             } else {
-                // Default consolidated export
-                const headers = [groupByColumn.charAt(0).toUpperCase() + groupByColumn.slice(1), 'Total Quantity', 'Breakdown'];
-                const csvRows = consolidatedRows.map(r => [
-                    `"${(r.groupValue || '').replace(/"/g, '""')}"`,
-                    r.totalQuantity,
-                    `"${(r.breakdownText || '').replace(/"/g, '""')}"`
-                ].join(','));
+                // Default consolidated export - include unit when grouping by item
+                const escapeCSV = (val) => {
+                    if (val === null || val === undefined) return '';
+                    const str = String(val);
+                    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                        return `"${str.replace(/"/g, '""')}"`;
+                    }
+                    return str;
+                };
+
+                const groupHeader = groupByColumn.charAt(0).toUpperCase() + groupByColumn.slice(1);
+                const headers = groupByColumn === 'item'
+                    ? [groupHeader, 'Unit', 'Total Quantity', 'Breakdown']
+                    : [groupHeader, 'Total Quantity', 'Breakdown'];
+
+                const csvRows = consolidatedRows.map(r => {
+                    if (groupByColumn === 'item') {
+                        return [
+                            escapeCSV(r.groupValue),
+                            escapeCSV(r.unit),
+                            r.totalQuantity,
+                            escapeCSV(r.breakdownText)
+                        ].join(',');
+                    } else {
+                        return [
+                            escapeCSV(r.groupValue),
+                            r.totalQuantity,
+                            escapeCSV(r.breakdownText)
+                        ].join(',');
+                    }
+                });
                 csv = [headers.join(','), ...csvRows].join('\n');
             }
         }
@@ -294,6 +318,19 @@ const Dashboard = () => {
 
             {hasResults && (
                 <div className="card">
+                    {/* AI Disclaimer */}
+                    <div style={{
+                        padding: '10px 15px',
+                        backgroundColor: '#fff3cd',
+                        border: '1px solid #ffc107',
+                        borderRadius: '4px',
+                        marginBottom: '1rem',
+                        fontSize: '0.9rem',
+                        color: '#856404'
+                    }}>
+                        <strong>Note:</strong> AI can make mistakes. Always double-check your extractions before using them in estimates.
+                    </div>
+
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '10px' }}>
                         <h3 style={{ margin: 0, color: '#2E5C43' }}>
                             Extraction Results ({detailRows.length} items from {totalPages} page{totalPages !== 1 ? 's' : ''})
@@ -413,6 +450,7 @@ const Dashboard = () => {
                             gridRef={gridRef}
                             rowNumberFilter={rowNumberFilter}
                             visibleColumns={visibleColumns}
+                            selectedSchema={schemas.find(s => s.id === selectedSchemaId)}
                         />
                     ) : (
                         <ConsolidatedView

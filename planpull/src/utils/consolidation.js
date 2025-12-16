@@ -1,5 +1,6 @@
 /**
  * Consolidate rows by a specified column, summing quantities.
+ * When grouping by 'item', also groups by unit to prevent mixing different units.
  *
  * @param {Array} rows - Detail rows (source of truth)
  * @param {string} groupByColumn - Column to group by (e.g., 'item', 'area', 'unit')
@@ -11,34 +12,43 @@ export function consolidateRows(rows, groupByColumn = 'item') {
   const groups = {};
 
   rows.forEach(row => {
-    const key = row[groupByColumn] || '(empty)';
+    const primaryValue = row[groupByColumn] || '(empty)';
+    const unit = row.unit || '';
+
+    // When grouping by 'item', include unit in the key to prevent mixing units
+    // e.g., "gravel|lb" vs "gravel|cuft" stay separate
+    const key = groupByColumn === 'item'
+      ? `${primaryValue}|${unit}`
+      : primaryValue;
 
     if (!groups[key]) {
       groups[key] = {
-        groupValue: key,
+        groupValue: primaryValue,
         groupByColumn: groupByColumn,
         totalQuantity: 0,
         breakdown: [],
         rowNumbers: [],
-        unit: row.unit || ''
+        unit: unit
       };
     }
 
     groups[key].totalQuantity += Number(row.quantity) || 0;
     groups[key].rowNumbers.push(row.rowNumber);
 
-    // Build breakdown string showing contributing items
-    const breakdownItem = groupByColumn === 'item'
-      ? `${row.area || 'No area'} (${row.quantity})`
-      : `${row.item} (${row.quantity})`;
-    groups[key].breakdown.push(breakdownItem);
+    // Store full row data in breakdown for schema export support
+    groups[key].breakdown.push({
+      ...row,
+      breakdownText: groupByColumn === 'item'
+        ? `${row.area || 'No area'} (${row.quantity})`
+        : `${row.item} (${row.quantity})`
+    });
   });
 
   // Convert to array and format breakdown as string
   return Object.values(groups).map((group, index) => ({
     ...group,
     rowNumber: index + 1,
-    breakdownText: group.breakdown.join(', ')
+    breakdownText: group.breakdown.map(b => b.breakdownText).join(', ')
   }));
 }
 

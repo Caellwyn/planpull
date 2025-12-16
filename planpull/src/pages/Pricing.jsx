@@ -8,16 +8,18 @@ import { redirectToCheckout } from '../services/billing';
 const PRICES = {
   basic: {
     id: import.meta.env.VITE_STRIPE_BASIC_PRICE_ID || '',
-    name: 'Basic',
+    name: 'Professional',
     price: '$50',
     period: 'month',
     pages: 500,
     features: [
+      '7-day free trial',
       'Up to 500 pages/month',
       'PDF table extraction',
       'Diagram annotation extraction',
       'CSV export',
       'Detail & Consolidated views',
+      'Custom export schemas',
       'Email support',
     ],
   },
@@ -139,14 +141,39 @@ const Pricing = () => {
               cursor: loading === PRICES.basic.id ? 'not-allowed' : 'pointer',
             }}
           >
-            {loading === PRICES.basic.id ? 'Loading...' : 'Get Started'}
+            {loading === PRICES.basic.id ? 'Loading...' : 'Start 7-Day Free Trial'}
           </button>
         </div>
       </div>
 
       <p style={{ textAlign: 'center', color: '#888', marginTop: '2rem', fontSize: '0.9rem' }}>
-        Cancel anytime. No long-term contracts.
+        7-day free trial. Cancel anytime. No long-term contracts.
       </p>
+
+      {/* Value Proposition Image */}
+      <div style={{
+        marginTop: '4rem',
+        padding: '2rem',
+        backgroundColor: '#f8f9fa',
+        borderRadius: '12px',
+        textAlign: 'center'
+      }}>
+        <h3 style={{ color: '#333', marginBottom: '1rem' }}>
+          From Plan to Spreadsheet in Minutes
+        </h3>
+        <p style={{ color: '#666', marginBottom: '1.5rem', maxWidth: '500px', margin: '0 auto 1.5rem' }}>
+          Upload your landscaping PDF and get organized, editable data ready for your estimating software.
+        </p>
+        <img
+          src="/images/value_prop.jpg"
+          alt="PDF plan transforming into organized spreadsheet"
+          style={{
+            maxWidth: '100%',
+            borderRadius: '8px',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
+          }}
+        />
+      </div>
     </div>
   );
 };

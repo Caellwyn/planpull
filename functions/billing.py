@@ -1,6 +1,7 @@
 """
 Stripe billing functions for PlanPull.
 Handles checkout sessions, webhooks, and subscription management.
+Includes 7-day free trial for new subscriptions.
 """
 
 import os
@@ -86,7 +87,7 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict:
     cancel_url = f"{base_url}/pricing?checkout=canceled"
 
     try:
-        # Create checkout session
+        # Create checkout session with 7-day free trial
         session = stripe.checkout.Session.create(
             customer=customer_id,
             payment_method_types=['card'],
@@ -95,6 +96,9 @@ def create_checkout_session(req: https_fn.CallableRequest) -> dict:
                 'quantity': 1,
             }],
             mode='subscription',
+            subscription_data={
+                'trial_period_days': 7,
+            },
             success_url=success_url,
             cancel_url=cancel_url,
             client_reference_id=uid,
