@@ -64,7 +64,7 @@ const Pricing = () => {
         Simple Pricing
       </h1>
       <p style={{ textAlign: 'center', color: '#666', marginBottom: '2rem' }}>
-        Extract materials lists from landscaping PDFs in minutes, not hours.
+        Extract material lists from PDFs in minutes, not hours.
       </p>
 
       {checkoutCanceled && (
@@ -162,7 +162,7 @@ const Pricing = () => {
           From Plan to Spreadsheet in Minutes
         </h3>
         <p style={{ color: '#666', marginBottom: '1.5rem', maxWidth: '500px', margin: '0 auto 1.5rem' }}>
-          Upload your landscaping PDF and get organized, editable data ready for your estimating software.
+          Upload your PDF and get organized, editable data ready for your estimating software.
         </p>
         <img
           src="/images/value_prop.jpg"

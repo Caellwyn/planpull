@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { useLocation } from 'react-router-dom';
+import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import FileDropzone from '../components/dashboard/FileDropzone';
@@ -7,12 +8,14 @@ import ResultsGrid, { COLUMN_DEFS } from '../components/grid/ResultsGrid';
 import ConsolidatedView from '../components/grid/ConsolidatedView';
 import RowNumberFilter from '../components/grid/RowNumberFilter';
 import ColumnPicker from '../components/grid/ColumnPicker';
+import WelcomeModal from '../components/common/WelcomeModal';
 import { useGridData } from '../hooks/useGridData';
 import { extractPdf } from '../services/api';
 import { exportWithSchema } from '../utils/schemaTransform';
 
 const Dashboard = () => {
     const { currentUser } = useAuth();
+    const location = useLocation();
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState(null);
     const [hasResults, setHasResults] = useState(false);
@@ -24,7 +27,17 @@ const Dashboard = () => {
     const [visibleColumns, setVisibleColumns] = useState(COLUMN_DEFS.map(c => c.field));
     const [schemas, setSchemas] = useState([]);
     const [selectedSchemaId, setSelectedSchemaId] = useState('');
+    const [showWelcomeModal, setShowWelcomeModal] = useState(false);
     const gridRef = useRef(null);
+
+    // Show welcome modal for new users
+    useEffect(() => {
+        if (location.state?.showWelcome) {
+            setShowWelcomeModal(true);
+            // Clear the state so it doesn't show again on refresh
+            window.history.replaceState({}, document.title);
+        }
+    }, [location.state]);
 
     // Load available schemas
     useEffect(() => {
@@ -266,6 +279,9 @@ const Dashboard = () => {
 
     return (
         <div className="container" style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto' }}>
+            {showWelcomeModal && (
+                <WelcomeModal onClose={() => setShowWelcomeModal(false)} />
+            )}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                 <h1 style={{ margin: 0, color: '#333' }}>Dashboard</h1>
                 {hasResults && !showDropzone && (

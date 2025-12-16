@@ -43,7 +43,7 @@ const Landing = () => {
                             maxWidth: '500px',
                             lineHeight: '1.6'
                         }}>
-                            Extract material quantities from landscaping plans automatically.
+                            Extract material quantities from your plans automatically.
                             Upload a PDF, get a spreadsheet ready for your estimating software.
                         </p>
                         <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
@@ -139,7 +139,7 @@ const Landing = () => {
                         <StepCard
                             number="1"
                             title="Upload Your PDF"
-                            description="Drop any landscaping plan, material list, or diagram. Multi-page PDFs work great."
+                            description="Drop any plan, material list, or diagram. Multi-page PDFs work great."
                             placeholder="upload-icon.svg"
                         />
                         <StepCard
@@ -180,7 +180,7 @@ const Landing = () => {
 
                 <div style={{ maxWidth: '1100px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
                     <h2 style={{ fontSize: '2rem', textAlign: 'center', marginBottom: '50px' }}>
-                        Built for Landscaping Contractors
+                        Built for Contractors
                     </h2>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '30px' }}>
                         <FeatureCard
@@ -239,8 +239,7 @@ const Landing = () => {
                         </h2>
                         <p style={{ color: '#666', lineHeight: '1.7', marginBottom: '20px' }}>
                             Whether you're a solo contractor or running a crew, PlanPull saves you hours
-                            every month on takeoffs. Built specifically for landscaping—not a generic
-                            construction tool.
+                            every month on takeoffs.
                         </p>
                         <ul style={{ color: '#666', lineHeight: '2', paddingLeft: '20px' }}>
                             <li>Works with Bluebeam, PDF plans, hand-drawn diagrams</li>

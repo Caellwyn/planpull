@@ -46,10 +46,11 @@ const Login = () => {
             setLoading(true);
             if (isLogin) {
                 await login(email, password);
+                navigate('/app');
             } else {
-                await signup(email, password);
+                const { isNewUser } = await signup(email, password);
+                navigate('/app', { state: { showWelcome: isNewUser } });
             }
-            navigate('/app');
         } catch (err) {
             console.error(err);
             // Use helper if available, otherwise fallback to message or generic error
@@ -63,8 +64,8 @@ const Login = () => {
         try {
             setError('');
             setLoading(true);
-            await loginWithGoogle();
-            navigate('/app');
+            const { isNewUser } = await loginWithGoogle();
+            navigate('/app', { state: { showWelcome: isNewUser } });
         } catch (err) {
             console.error(err);
             const message = err.code ? getFriendlyErrorMessage(err.code) : err.message;

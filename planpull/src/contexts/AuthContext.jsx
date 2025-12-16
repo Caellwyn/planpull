@@ -20,8 +20,9 @@ export function AuthProvider({ children }) {
     const [currentUser, setCurrentUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
+    // Returns true if this is a new user (first time sign up)
     async function createUserDocument(user) {
-        if (!user) return;
+        if (!user) return false;
 
         try {
             const userRef = doc(db, 'users', user.uid);
@@ -37,21 +38,25 @@ export function AuthProvider({ children }) {
                         displayName: name,
                         createdAt: serverTimestamp(),
                         subscriptionStatus: 'none',
-                        pagesUsedThisPeriod: 0
+                        pagesUsedThisPeriod: 0,
+                        hasSeenWelcome: false
                     });
+                    return true; // New user
                 } catch (error) {
                     console.error("Error creating user document", error);
                 }
             }
+            return false; // Existing user
         } catch (error) {
             console.error("Error checking user document", error);
+            return false;
         }
     }
 
     async function signup(email, password) {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        await createUserDocument(userCredential.user);
-        return userCredential;
+        const isNewUser = await createUserDocument(userCredential.user);
+        return { userCredential, isNewUser };
     }
 
     function login(email, password) {
@@ -61,8 +66,8 @@ export function AuthProvider({ children }) {
     async function loginWithGoogle() {
         const provider = new GoogleAuthProvider();
         const userCredential = await signInWithPopup(auth, provider);
-        await createUserDocument(userCredential.user);
-        return userCredential;
+        const isNewUser = await createUserDocument(userCredential.user);
+        return { userCredential, isNewUser };
     }
 
     function logout() {
