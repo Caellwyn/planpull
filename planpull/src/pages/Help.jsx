@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 
 const Help = () => {
     const [activeSection, setActiveSection] = useState('getting-started');
+    const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
     const sections = [
         { id: 'getting-started', title: 'Getting Started' },
@@ -14,49 +15,108 @@ const Help = () => {
         { id: 'tips', title: 'Tips & Troubleshooting' },
     ];
 
+    const handleSectionClick = (sectionId) => {
+        setActiveSection(sectionId);
+        setMobileNavOpen(false);
+        document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' });
+    };
+
     return (
-        <div style={{ display: 'flex', maxWidth: '1200px', margin: '0 auto', padding: '2rem', gap: '2rem' }}>
-            {/* Sidebar Navigation */}
-            <nav style={{
-                width: '220px',
-                flexShrink: 0,
-                position: 'sticky',
-                top: '2rem',
-                height: 'fit-content'
-            }}>
-                <h3 style={{ margin: '0 0 1rem', color: '#2E5C43' }}>User Guide</h3>
-                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                    {sections.map(section => (
-                        <li key={section.id}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '1rem' }}>
+            {/* Mobile Navigation Dropdown */}
+            <div className="mobile-nav" style={{ marginBottom: '1rem' }}>
+                <button
+                    onClick={() => setMobileNavOpen(!mobileNavOpen)}
+                    style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        backgroundColor: '#e8f5e9',
+                        border: '1px solid #c8e6c9',
+                        borderRadius: '6px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        cursor: 'pointer',
+                        fontSize: '1rem',
+                        color: '#2E5C43',
+                        fontWeight: '600'
+                    }}
+                >
+                    <span>{sections.find(s => s.id === activeSection)?.title || 'Navigate'}</span>
+                    <span>{mobileNavOpen ? '▲' : '▼'}</span>
+                </button>
+                {mobileNavOpen && (
+                    <div style={{
+                        backgroundColor: 'white',
+                        border: '1px solid #e0e0e0',
+                        borderRadius: '6px',
+                        marginTop: '4px',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                    }}>
+                        {sections.map(section => (
                             <button
-                                onClick={() => {
-                                    setActiveSection(section.id);
-                                    document.getElementById(section.id)?.scrollIntoView({ behavior: 'smooth' });
-                                }}
+                                key={section.id}
+                                onClick={() => handleSectionClick(section.id)}
                                 style={{
                                     display: 'block',
                                     width: '100%',
-                                    padding: '8px 12px',
+                                    padding: '12px 16px',
                                     border: 'none',
-                                    background: activeSection === section.id ? '#e8f5e9' : 'transparent',
+                                    borderBottom: '1px solid #f0f0f0',
+                                    background: activeSection === section.id ? '#e8f5e9' : 'white',
                                     color: activeSection === section.id ? '#2E5C43' : '#666',
                                     fontWeight: activeSection === section.id ? '600' : '400',
                                     textAlign: 'left',
                                     cursor: 'pointer',
-                                    borderRadius: '4px',
-                                    marginBottom: '4px',
                                     fontSize: '0.95rem'
                                 }}
                             >
                                 {section.title}
                             </button>
-                        </li>
-                    ))}
-                </ul>
-            </nav>
+                        ))}
+                    </div>
+                )}
+            </div>
 
-            {/* Main Content */}
-            <main style={{ flex: 1, minWidth: 0 }}>
+            <div className="help-container" style={{ display: 'flex', gap: '2rem' }}>
+                {/* Desktop Sidebar Navigation */}
+                <nav className="desktop-sidebar" style={{
+                    width: '220px',
+                    flexShrink: 0,
+                    position: 'sticky',
+                    top: '2rem',
+                    height: 'fit-content'
+                }}>
+                    <h3 style={{ margin: '0 0 1rem', color: '#2E5C43' }}>User Guide</h3>
+                    <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                        {sections.map(section => (
+                            <li key={section.id}>
+                                <button
+                                    onClick={() => handleSectionClick(section.id)}
+                                    style={{
+                                        display: 'block',
+                                        width: '100%',
+                                        padding: '8px 12px',
+                                        border: 'none',
+                                        background: activeSection === section.id ? '#e8f5e9' : 'transparent',
+                                        color: activeSection === section.id ? '#2E5C43' : '#666',
+                                        fontWeight: activeSection === section.id ? '600' : '400',
+                                        textAlign: 'left',
+                                        cursor: 'pointer',
+                                        borderRadius: '4px',
+                                        marginBottom: '4px',
+                                        fontSize: '0.95rem'
+                                    }}
+                                >
+                                    {section.title}
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                </nav>
+
+                {/* Main Content */}
+                <main style={{ flex: 1, minWidth: 0 }}>
                 <h1 style={{ color: '#333', marginTop: 0 }}>PlanPull User Guide</h1>
                 <p style={{ color: '#666', fontSize: '1.1rem', marginBottom: '2rem' }}>
                     Learn how to extract material quantities from your landscaping PDFs and export them for your estimating software.
@@ -299,6 +359,26 @@ const Help = () => {
                     <p>Contact us at <a href="mailto:support@planpull.com" style={{ color: '#2E5C43' }}>support@planpull.com</a></p>
                 </Section>
             </main>
+            </div>
+
+            <style>{`
+                @media (max-width: 768px) {
+                    .desktop-sidebar {
+                        display: none !important;
+                    }
+                    .mobile-nav {
+                        display: block !important;
+                    }
+                }
+                @media (min-width: 769px) {
+                    .mobile-nav {
+                        display: none !important;
+                    }
+                    .desktop-sidebar {
+                        display: block !important;
+                    }
+                }
+            `}</style>
         </div>
     );
 };
