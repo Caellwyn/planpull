@@ -34,9 +34,9 @@ const Dashboard = () => {
                 id: doc.id,
                 ...doc.data()
             }));
-            // Filter to system schemas + user's schemas
+            // Filter to user's schemas only (system schemas temporarily disabled)
             const filtered = allSchemas.filter(s =>
-                s.scope === 'system' || s.ownerId === currentUser?.uid
+                s.ownerId === currentUser?.uid
             );
             setSchemas(filtered);
         });
@@ -397,18 +397,9 @@ const Dashboard = () => {
                                 }}
                             >
                                 <option value="">Export as {viewMode === 'detail' ? 'visible columns' : 'default format'}</option>
-                                <optgroup label="System Schemas">
-                                    {schemas.filter(s => s.scope === 'system').map(s => (
-                                        <option key={s.id} value={s.id}>{s.name}</option>
-                                    ))}
-                                </optgroup>
-                                {schemas.some(s => s.scope !== 'system') && (
-                                    <optgroup label="My Schemas">
-                                        {schemas.filter(s => s.scope !== 'system').map(s => (
-                                            <option key={s.id} value={s.id}>{s.name}</option>
-                                        ))}
-                                    </optgroup>
-                                )}
+                                {schemas.map(s => (
+                                    <option key={s.id} value={s.id}>{s.name}</option>
+                                ))}
                             </select>
                         )}
                         <button onClick={handleExportCSV} className="btn-primary">
