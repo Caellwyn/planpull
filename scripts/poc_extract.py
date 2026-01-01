@@ -41,7 +41,8 @@ def get_client():
     return genai.Client(
         vertexai=True,
         project=PROJECT_ID,
-        location=LOCATION
+        location="global"
+        # location=LOCATION
     )
 
 def list_input_files():

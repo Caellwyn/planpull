@@ -36,7 +36,8 @@ def get_client():
     return genai.Client(
         vertexai=True,
         project=project_id,
-        location=location
+        location="global"
+        # location=location
     )
 
 def extract_data(file_content: bytes, mime_type: str) -> dict:
