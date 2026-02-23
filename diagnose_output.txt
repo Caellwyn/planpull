@@ -1,0 +1,80 @@
+Both GOOGLE_API_KEY and GEMINI_API_KEY are set. Using GOOGLE_API_KEY.
+--- Starting Diagnostic for sample_pdfs\LocalscapesPlan.pdf ---
+Initial Memory: 158.43 MB
+1. After Read Bytes: 180.23 MB (Size: 21.80 MB)
+2. After Base64 Encode: 209.31 MB (String length: 30479260)
+3. After Base64 Decode: 231.11 MB
+4. After PDF Page Count (1 pages): 231.76 MB
+5. Calling Gemini extraction...
+Error in Gemini extraction: Reauthentication is needed. Please run `gcloud auth application-default login` to reauthenticate.
+   Gemini Extraction Failed (likely Auth): Reauthentication is needed. Please run `gcloud auth application-default login` to reauthenticate.
+   Simulating a large response...
+   After Mock Result Creation: 271.32 MB
+6. After Flattening (1000 items): 271.63 MB
+7. Performing cleanup...
+   After Final Cleanup & GC: 191.70 MB
+Filename: C:\Users\caell\OneDrive\code_projects\planpull\scripts\diagnose_memory.py
+
+Line #    Mem usage    Increment  Occurrences   Line Contents
+=============================================================
+    23    158.4 MiB    158.4 MiB           1   @profile
+    24                                         def simulate_extraction(pdf_path):
+    25    158.4 MiB      0.0 MiB           1       print(f"--- Starting Diagnostic for {pdf_path} ---")
+    26    158.4 MiB      0.0 MiB           1       print(f"Initial Memory: {get_memory_usage():.2f} MB")
+    27                                             
+    28                                             # 1. Read file
+    29    180.2 MiB      0.0 MiB           2       with open(pdf_path, "rb") as f:
+    30    180.2 MiB     21.8 MiB           1           raw_bytes = f.read()
+    31    180.2 MiB      0.0 MiB           1       print(f"1. After Read Bytes: {get_memory_usage():.2f} MB (Size: {len(raw_bytes)/(1024*1024):.2f} MB)")
+    32                                             
+    33                                             # 2. Simulate Base64 encoding (as if coming from request)
+    34    209.3 MiB     29.1 MiB           1       file_data_b64 = base64.b64encode(raw_bytes).decode('utf-8')
+    35    209.3 MiB      0.0 MiB           1       print(f"2. After Base64 Encode: {get_memory_usage():.2f} MB (String length: {len(file_data_b64)})")
+    36                                             
+    37                                             # 3. Simulate Cloud Function Receiving & Decoding
+    38    231.1 MiB     21.8 MiB           1       file_bytes = base64.b64decode(file_data_b64)
+    39    231.1 MiB      0.0 MiB           1       print(f"3. After Base64 Decode: {get_memory_usage():.2f} MB")
+    40                                         
+    41                                             # 4. Count pages
+    42    231.1 MiB      0.0 MiB           1       try:
+    43    231.7 MiB      0.6 MiB           1           pdf_doc = fitz.open(stream=file_bytes, filetype="pdf")
+    44    231.8 MiB      0.0 MiB           1           page_count = pdf_doc.page_count
+    45    231.8 MiB      0.0 MiB           1           pdf_doc.close()
+    46    231.8 MiB      0.0 MiB           1           print(f"4. After PDF Page Count ({page_count} pages): {get_memory_usage():.2f} MB")
+    47                                             except Exception as e:
+    48                                                 print(f"4. PDF Page Count Failed: {e}")
+    49                                         
+    50                                             # 5. Call Gemini
+    51    231.8 MiB      0.0 MiB           1       print("5. Calling Gemini extraction...")
+    52    231.8 MiB      0.0 MiB           1       raw_result = None
+    53    231.8 MiB      0.0 MiB           1       try:
+    54    271.1 MiB     39.3 MiB           1           raw_result = extract_data(file_bytes, "application/pdf")
+    55                                                 print(f"   Success! After Gemini Extraction: {get_memory_usage():.2f} MB")
+    56    271.1 MiB      0.0 MiB           1       except Exception as e:
+    57    271.1 MiB      0.0 MiB           1           print(f"   Gemini Extraction Failed (likely Auth): {e}")
+    58                                                 # Build a large mock result to see memory impact of processing/flattening
+    59    271.1 MiB      0.0 MiB           1           print("   Simulating a large response...")
+    60    271.3 MiB      0.0 MiB           1           raw_result = {
+    61    271.3 MiB      0.2 MiB        1011               'tables': [{'page': i, 'items': [{'item': f'Test Item {j}', 'quantity': j, 'unit': 'ea'} for j in range(100)]} for i in range(10)],
+    62    271.3 MiB      0.0 MiB           1               'diagrams': []
+    63                                                 }
+    64    271.3 MiB      0.0 MiB           1           print(f"   After Mock Result Creation: {get_memory_usage():.2f} MB")
+    65                                         
+    66                                             # 6. Flatten
+    67    271.3 MiB      0.0 MiB           1       if raw_result:
+    68    271.6 MiB      0.3 MiB           1           final_result = flatten_items(raw_result)
+    69    271.6 MiB      0.0 MiB           1           item_count = len(final_result.get('items', []))
+    70    271.6 MiB      0.0 MiB           1           print(f"6. After Flattening ({item_count} items): {get_memory_usage():.2f} MB")
+    71                                         
+    72                                             # 7. Cleanup simulation
+    73    271.6 MiB      0.0 MiB           1       print("7. Performing cleanup...")
+    74    249.8 MiB    -21.8 MiB           1       del raw_bytes
+    75    220.8 MiB    -29.1 MiB           1       del file_data_b64
+    76    220.8 MiB      0.0 MiB           1       del file_bytes
+    77    220.8 MiB      0.0 MiB           1       if 'raw_result' in locals(): del raw_result
+    78    191.7 MiB    -29.1 MiB           1       gc.collect()
+    79    191.7 MiB      0.0 MiB           1       print(f"   After Final Cleanup & GC: {get_memory_usage():.2f} MB")
+    80                                             
+    81    191.7 MiB      0.0 MiB           1       return final_result or {}
+
+

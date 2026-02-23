@@ -3,6 +3,9 @@ from firebase_admin import initialize_app, firestore
 import base64
 import time
 import fitz  # PyMuPDF
+import psutil
+import os
+import gc
 from gemini_client import extract_data
 from consolidation import flatten_items
 
@@ -16,10 +19,16 @@ initialize_app()
 # Lazy initialization of Firestore to avoid deployment errors
 db = None
 
+def log_mem(label):
+    """Helper to log memory usage to console/Cloud Logs."""
+    process = psutil.Process(os.getpid())
+    mem_mb = process.memory_info().rss / (1024 * 1024)
+    print(f"[MEMORY] {label}: {mem_mb:.2f} MB")
+
 @https_fn.on_call(
     cors=options.CorsOptions(cors_origins="*", cors_methods=["get", "post"]),
     timeout_sec=300, # Increase timeout to 5 minutes for large PDFs
-    memory=options.MemoryOption.MB_512 # Reduced memory - no longer using Pandas
+    memory=options.MemoryOption.GB_1 # Increased to 1GB to handle memory spikes
 )
 def extract_pdf(req: https_fn.CallableRequest) -> any:
     """
@@ -31,6 +40,7 @@ def extract_pdf(req: https_fn.CallableRequest) -> any:
     if db is None:
         db = firestore.client()
 
+    log_mem("Start extract_pdf")
     start_time = time.time()
     
     # Enforce Authentication
@@ -44,15 +54,22 @@ def extract_pdf(req: https_fn.CallableRequest) -> any:
     email = req.auth.token.get('email', '')
 
     try:
-        # 1. Decode base64 file data
-        file_data_b64 = req.data.get('fileData')
+        # 1. Decode base64 file data - use pop to remove from request dict immediately
+        file_data_b64 = req.data.pop('fileData', None)
         if not file_data_b64:
             raise https_fn.HttpsError(
                 code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
                 message="Missing 'fileData' in request."
             )
         
+        log_mem(f"After pop b64 (len: {len(file_data_b64)})")
         file_bytes = base64.b64decode(file_data_b64)
+        
+        # Immediately delete the b64 string to free memory
+        del file_data_b64
+        gc.collect()
+        log_mem("After b64 delete & GC")
+
         mime_type = req.data.get('mimeType', 'application/pdf')
 
         # 2. Count actual PDF pages using PyMuPDF (for accurate billing)
@@ -62,15 +79,27 @@ def extract_pdf(req: https_fn.CallableRequest) -> any:
                 pdf_doc = fitz.open(stream=file_bytes, filetype="pdf")
                 page_count = pdf_doc.page_count
                 pdf_doc.close()
+                log_mem(f"After Page Count ({page_count} pages)")
             except Exception as pdf_error:
                 print(f"Warning: Could not count PDF pages: {pdf_error}")
                 # Fall back to counting from extracted items
 
         # 3. Call Gemini Extraction
+        log_mem("Calling Gemini...")
         raw_result = extract_data(file_bytes, mime_type)
+        
+        # Cleanup bytes before processing results
+        del file_bytes
+        gc.collect()
+        log_mem("After Gemini & bytes cleanup")
 
         # 4. Flatten Items (consolidation happens on frontend)
         final_result = flatten_items(raw_result)
+        
+        # Cleanup raw result
+        del raw_result
+        gc.collect()
+        log_mem("After Flatten & raw cleanup")
 
         # Calculate metrics
         item_count = len(final_result.get('items', []))
@@ -84,6 +113,7 @@ def extract_pdf(req: https_fn.CallableRequest) -> any:
         # 4. Atomic Write: Log Success + Increment Usage
         processing_time_ms = int((time.time() - start_time) * 1000)
         
+        log_mem("Starting Firestore write")
         batch = db.batch()
         
         # Reference to new extraction log
@@ -108,6 +138,7 @@ def extract_pdf(req: https_fn.CallableRequest) -> any:
         
         # Commit batch
         batch.commit()
+        log_mem("After Firestore write")
 
         return {
             "success": True,
